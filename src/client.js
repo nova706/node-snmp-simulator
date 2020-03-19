@@ -24,7 +24,7 @@ const options = {
 
 const session = snmp.createSession("127.0.0.1", 'public', options);
 
-let oid = "1.3.6.1.2.1.1.1";
+let oid = "1.3.6.1";
 
 function doneCb(error) {
     if (error) {

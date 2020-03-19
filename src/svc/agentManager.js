@@ -65,7 +65,11 @@ class AgentManager {
             authorizer.addCommunity(this.agent.community);
             authorizer.addUser({
                 name: this.agent.user.name,
-                level: AgentManager.convertSecurityLevel(this.agent.user.level)
+                authProtocol: AgentManager.convertAuthProtocol(this.agent.user.authProtocol),
+                authKey: this.agent.user.authKey,
+                privProtocol: AgentManager.convertPrivacyProtocol(this.agent.user.privProtocol),
+                privKey: this.agent.user.privKey,
+                level: AgentManager.getSecurityLevel(this.agent.user)
             });
 
             const mib = snmpAgent.getMib();
@@ -87,9 +91,9 @@ class AgentManager {
 
             this.snmpAgent = snmpAgent;
 
-            console.log(mib);
-
             this.agent.state = 'STARTED';
+
+            console.log('Agent Started: ' + this.agent.name, this.agent);
 
             resolve();
         });
@@ -120,19 +124,45 @@ class AgentManager {
     }
 
     /**
-     * Converts a security level into an SNMP SecurityLevel
+     * Gets an SNMP SecurityLevel from the agent user
      *
-     * @param {Agent.SecurityLevel} securityLevel
+     * @param {Agent.user} user
      * @return {SecurityLevel|null}
      */
-    static convertSecurityLevel(securityLevel) {
-        switch (securityLevel) {
-            case Agent.SecurityLevel.NO_AUTH_NO_PRIVACY:
-                return snmp.SecurityLevel.noAuthNoPriv;
-            case Agent.SecurityLevel.AUTH_NO_PRIVACY:
-                return snmp.SecurityLevel.authNoPriv;
-            case Agent.SecurityLevel.AUTH_PRIVACY:
-                return snmp.SecurityLevel.authPriv;
+    static getSecurityLevel(user) {
+        const authSet =  user.authProtocol && user.authProtocol !== Agent.AuthProtocol.NONE;
+        const privSet =  user.privProtocol && user.privProtocol !== Agent.PrivProtocol.NONE;
+
+        if (authSet && privSet) {
+            return snmp.SecurityLevel.authPriv;
+        }
+        if (authSet) {
+            return snmp.SecurityLevel.authNoPriv;
+        }
+        return snmp.SecurityLevel.noAuthNoPriv;
+    }
+
+    static convertAuthProtocol(authProtocol) {
+        switch (authProtocol) {
+            case Agent.AuthProtocol.NONE:
+                return snmp.AuthProtocols.none;
+            case Agent.AuthProtocol.MD5:
+                return snmp.AuthProtocols.md5;
+            case Agent.AuthProtocol.SHA:
+                return snmp.AuthProtocols.sha;
+        }
+
+        return null;
+    }
+
+    static convertPrivacyProtocol(privProtocol) {
+        switch (privProtocol) {
+            case Agent.PrivProtocol.NONE:
+                return snmp.PrivProtocols.none;
+            case Agent.PrivProtocol.DES:
+                return snmp.PrivProtocols.des;
+            case Agent.PrivProtocol.AES:
+                return snmp.PrivProtocols.aes;
         }
 
         return null;
