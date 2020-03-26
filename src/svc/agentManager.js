@@ -99,6 +99,53 @@ class AgentManager {
         });
     }
 
+    walk(oid) {
+        return new Promise((resolve, reject) => {
+
+            const options = {
+                port: this.agent.port,
+                retries: 1,
+                timeout: 5000,
+                transport: "udp4",
+                trapPort: 162,
+                version: snmp.Version2c,
+                idBitsSize: 32,
+                context: ""
+            };
+
+            const community = this.agent.community;
+
+            const session = snmp.createSession("127.0.0.1", community, options);
+
+            let results = [];
+
+            function doneCb(err) {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                resolve(results);
+            }
+
+            function feedCb(varbinds) {
+                let i;
+
+                for (i = 0; i < varbinds.length; i++) {
+                    if (snmp.isVarbindError(varbinds[i])) {
+                        break;
+                    } else {
+                        results.push(varbinds[i].oid + "|" + varbinds[i].value);
+                    }
+                }
+            }
+
+            const maxRepetitions = 1;
+
+            session.walk(oid, maxRepetitions, feedCb, doneCb);
+        });
+    }
+
     /**
      * Handler for a MIB request from a client
      *

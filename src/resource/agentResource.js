@@ -57,6 +57,16 @@ module.exports = function (router) {
             });
     });
 
+    router.get('/api/agents/:id/walk', (req, res) => {
+        agentService.walk(req.params.id, req.query.oid)
+            .then(repsonse => {
+                res.send(repsonse);
+            })
+            .catch((err) => {
+                res.status(500).send(err.message || err);
+            });
+    });
+
     router.post('/api/agents', (req, res) => {
         agentService.create(req.body)
             .then((response) => {

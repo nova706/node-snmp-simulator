@@ -171,6 +171,26 @@ class AgentService {
         });
     }
 
+    /**
+     * Walk an Agent by ID with a given oid
+     *
+     * @param {String} id
+     * @param {String} oid
+     */
+    walk(id, oid) {
+        return new Promise((resolve, reject) => {
+            if (this.agentManagers.hasOwnProperty(id)) {
+                this.agentManagers[id].walk(oid).then(results => {
+                    resolve(results);
+                }, (err) => {
+                    reject(err);
+                });
+            } else {
+                reject('Could not find agent with ID: ' + id);
+            }
+        });
+    }
+
 }
 
 module.exports = new AgentService();
