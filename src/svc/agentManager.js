@@ -165,8 +165,61 @@ class AgentManager {
      * @param {Provider} provider
      */
     static updateValue(mib, provider) {
-        const idx = Math.floor(Math.random() * ((provider.valueRange.length - 1) + 1));
-        const value = provider.valueRange[idx];
+
+        let value;
+
+        let min;
+        let max;
+        let decimalPlaces;
+        let rand;
+        let power;
+
+        if (provider.updateType !== Provider.UpdateType.RANDOM) {
+            min = provider.valueRange[0];
+            max = provider.valueRange[1];
+
+            let minPrecision = (min.indexOf('.') >= 0) ? (min.length - min.indexOf('.') - 1) : 0;
+            let maxPrecision = (max.indexOf('.') >= 0) ? (max.length - max.indexOf('.') - 1) : 0;
+            decimalPlaces = Math.max(minPrecision, maxPrecision);
+
+            min = parseFloat(min);
+            max = parseFloat(max);
+        }
+
+        switch (provider.updateType) {
+            case Provider.UpdateType.RANDOM:
+
+                const idx = Math.floor(Math.random() * ((provider.valueRange.length - 1) + 1));
+                value = provider.valueRange[idx];
+
+                break;
+            case Provider.UpdateType.RANGE:
+
+                rand = (Math.random() * (max - min)) + min;
+                power = Math.max(1, Math.pow(10, decimalPlaces));
+                value = Math.round(rand * power) / power;
+
+                break;
+            case Provider.UpdateType.RAMP:
+
+                const amplitude = Math.abs((max - min) / 2);
+                const frequency = 15000 * 2 * Math.PI; // Full cycle every 15 seconds TODO: All this to be set by the user
+                value = (amplitude * Math.sin(Date.now() / frequency)) + amplitude + min;
+                power = Math.max(1, Math.pow(10, decimalPlaces));
+                value = Math.round(value * power) / power;
+
+                break;
+        }
+
+        switch (provider.objectType) {
+            case Provider.ObjectType.INTEGER:
+                value = parseInt(value, 10);
+                break;
+            case Provider.ObjectType.OCTET_STRING:
+                value = '' + value;
+                break;
+        }
+
         mib.setScalarValue(provider.name, value);
     }
 

@@ -5,6 +5,7 @@ class Provider {
         this.mibType = Provider.MibType.SCALAR;
         this.oid = oid;
         this.objectType = Provider.ObjectType.OCTET_STRING;
+        this.updateType = Provider.UpdateType.RANDOM;
         this.valueRange = valueRange;
     }
 
@@ -30,6 +31,12 @@ Provider.ObjectType = {
     'NO_SUCH_OBJECT': 'NO_SUCH_OBJECT',
     'NO_SUCH_INSTANCE': 'NO_SUCH_INSTANCE',
     'END_OF_MIB_VIEW': 'END_OF_MIB_VIEW'
+};
+
+Provider.UpdateType = {
+    'RANDOM': 'RANDOM',
+    'RANGE': 'RANGE',
+    'RAMP': 'RAMP'
 };
 
 module.exports = Provider;
