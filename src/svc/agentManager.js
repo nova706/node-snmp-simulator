@@ -17,6 +17,7 @@ class AgentManager {
         this.agent = agent;
         this.snmpAgent = null;
         this.agent.state = 'STOPPED';
+        this.lastProviderUpdate = {};
     }
 
     /**
@@ -73,6 +74,7 @@ class AgentManager {
             });
 
             const mib = snmpAgent.getMib();
+            const agentManager = this;
 
             this.agent.providers.forEach(provider => {
 
@@ -82,11 +84,11 @@ class AgentManager {
                     oid: provider.oid,
                     scalarType: AgentManager.convertObjectType(provider.objectType),
                     handler: function (mibRequest) {
-                        AgentManager.handleMibRequest(mibRequest, mib, provider);
+                        AgentManager.handleMibRequest(mibRequest, mib, provider, agentManager);
                     }
                 });
 
-                AgentManager.updateValue(mib, provider);
+                AgentManager.updateValue(mib, provider, agentManager);
             });
 
             this.snmpAgent = snmpAgent;
@@ -152,10 +154,11 @@ class AgentManager {
      * @param {MibRequest} mibRequest
      * @param {Mib} mib
      * @param {Provider} provider
+     * @param {AgentManager} agentManager
      */
-    static handleMibRequest(mibRequest, mib, provider) {
+    static handleMibRequest(mibRequest, mib, provider, agentManager) {
         mibRequest.done();
-        AgentManager.updateValue(mib, provider);
+        AgentManager.updateValue(mib, provider, agentManager);
     }
 
     /**
@@ -163,10 +166,15 @@ class AgentManager {
      *
      * @param {Mib} mib
      * @param {Provider} provider
+     * @param {AgentManager} agentManager
      */
-    static updateValue(mib, provider) {
+    static updateValue(mib, provider, agentManager) {
 
-        let value;
+        const lastUpdate = agentManager.lastProviderUpdate.hasOwnProperty(provider.name) ? agentManager.lastProviderUpdate[provider.name] : 0;
+        const now = Date.now();
+        const deltaTime = now - lastUpdate;
+
+        let value = null;
 
         let min;
         let max;
@@ -189,38 +197,45 @@ class AgentManager {
         switch (provider.updateType) {
             case Provider.UpdateType.RANDOM:
 
-                const idx = Math.floor(Math.random() * ((provider.valueRange.length - 1) + 1));
-                value = provider.valueRange[idx];
+                if (lastUpdate === 0 || deltaTime > provider.updateTime) {
+                    const idx = Math.floor(Math.random() * ((provider.valueRange.length - 1) + 1));
+                    value = provider.valueRange[idx];
+                }
 
                 break;
             case Provider.UpdateType.RANGE:
 
-                rand = (Math.random() * (max - min)) + min;
-                power = Math.max(1, Math.pow(10, decimalPlaces));
-                value = Math.round(rand * power) / power;
+                if (lastUpdate === 0 || deltaTime > provider.updateTime) {
+                    rand = (Math.random() * (max - min)) + min;
+                    power = Math.max(1, Math.pow(10, decimalPlaces));
+                    value = Math.round(rand * power) / power;
+                }
 
                 break;
             case Provider.UpdateType.RAMP:
 
                 const amplitude = Math.abs((max - min) / 2);
-                const frequency = 15000 * 2 * Math.PI; // Full cycle every 15 seconds TODO: All this to be set by the user
-                value = (amplitude * Math.sin(Date.now() / frequency)) + amplitude + min;
+                const frequency = provider.updateTime; // High to low every updateTime
+                value = (amplitude * Math.sin((now / frequency) * Math.PI)) + amplitude + min;
                 power = Math.max(1, Math.pow(10, decimalPlaces));
                 value = Math.round(value * power) / power;
 
                 break;
         }
 
-        switch (provider.objectType) {
-            case Provider.ObjectType.INTEGER:
-                value = parseInt(value, 10);
-                break;
-            case Provider.ObjectType.OCTET_STRING:
-                value = '' + value;
-                break;
-        }
+        if (value !== null) {
+            switch (provider.objectType) {
+                case Provider.ObjectType.INTEGER:
+                    value = parseInt(value, 10);
+                    break;
+                case Provider.ObjectType.OCTET_STRING:
+                    value = '' + value;
+                    break;
+            }
 
-        mib.setScalarValue(provider.name, value);
+            mib.setScalarValue(provider.name, value);
+            agentManager.lastProviderUpdate[provider.name] = now;
+        }
     }
 
     /**
@@ -325,6 +340,7 @@ class AgentManager {
 
         return null;
     }
+
 }
 
 module.exports = AgentManager;

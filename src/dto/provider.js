@@ -5,8 +5,9 @@ class Provider {
         this.mibType = Provider.MibType.SCALAR;
         this.oid = oid;
         this.objectType = Provider.ObjectType.OCTET_STRING;
-        this.updateType = Provider.UpdateType.RANDOM;
-        this.valueRange = valueRange;
+        this.updateType = Provider.UpdateType.RANDOM; // How the value should be updated
+        this.updateTime = 60000; // 1 minute - amount of time to use when updating the value: RANDOM/RANGE - minimum time between change, RAMP - time for a full interval
+        this.valueRange = valueRange; // RANDOM - the set of values to pick from, RANGE/RAMP - the min and max values
     }
 
 }
