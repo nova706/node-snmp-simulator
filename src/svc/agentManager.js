@@ -1,3 +1,4 @@
+const dgram = require('dgram');
 const snmp = require('net-snmp');
 
 const Agent = require('./../dto/agent');
@@ -51,7 +52,13 @@ class AgentManager {
      * Creates and starts the SNMP Agent and updates the agent state
      */
     start() {
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
+
+            const portIsOpen = await AgentManager.isPortOpen(this.agent.port);
+            if (!portIsOpen) {
+                reject('Port is in use: ' + this.agent.port);
+                return;
+            }
 
             const snmpAgent = snmp.createAgent({
                 port: this.agent.port,
@@ -137,7 +144,7 @@ class AgentManager {
                     if (snmp.isVarbindError(varbinds[i])) {
                         break;
                     } else {
-                        results.push(varbinds[i].oid + "|" + varbinds[i].value);
+                        results.push(varbinds[i].oid + " | " + varbinds[i].value);
                     }
                 }
             }
@@ -145,6 +152,21 @@ class AgentManager {
             const maxRepetitions = 1;
 
             session.walk(oid, maxRepetitions, feedCb, doneCb);
+        });
+    }
+
+    static isPortOpen(port, protocol) {
+        return new Promise((resolve, reject) => {
+            const tester = dgram.createSocket(protocol || 'udp4')
+                .once('error', err => {
+                    err.code === 'EADDRINUSE' ? resolve(false) : reject(err);
+                })
+                .once('listening', () => {
+                    tester.once('close', () => {
+                        resolve(true);
+                    }).close();
+                })
+                .bind(port);
         });
     }
 

@@ -116,17 +116,13 @@ class AgentService {
         return new Promise((resolve, reject) => {
 
             if (this.agentManagers.hasOwnProperty(id)) {
-                this.agentManagers[id].start().then(() => {
-                    resolve();
-                });
+                this.startAgentManager(this.agentManagers[id]).then(() => resolve()).catch((err) => reject(err));
             } else {
                 agentDao.get(id).then(agent => {
 
                     if (agent) {
                         this.agentManagers[agent._id] = new AgentManager(agent);
-                        this.agentManagers[agent._id].start().then(() => {
-                            resolve();
-                        });
+                        this.startAgentManager(this.agentManagers[agent._id]).then(() => resolve()).catch((err) => reject(err));
                     } else {
                         reject('Could not find agent with ID: ' + id);
                     }
@@ -191,6 +187,21 @@ class AgentService {
         });
     }
 
+    startAgentManager(agentManager) {
+
+        let agentId;
+        for (agentId in this.agentManagers) {
+            if (this.agentManagers.hasOwnProperty(agentId) &&
+                agentId !== agentManager.agent._id &&
+                this.agentManagers[agentId].agent.state === 'STARTED' &&
+                parseInt(this.agentManagers[agentId].agent.port, 10) === parseInt(agentManager.agent.port, 10)) {
+
+                return Promise.reject('Agent \'' + this.agentManagers[agentId].agent.name + '\' is already using port: ' + this.agentManagers[agentId].agent.port);
+            }
+        }
+
+        return agentManager.start();
+    }
 }
 
 module.exports = new AgentService();
